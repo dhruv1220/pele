@@ -101,7 +101,7 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
       if (m && m.index === i) {
         const tag = m[1].toLowerCase();
         const closing = source[i + 1] === '/';
-        const bit = tag === 'b' || tag === 'strong' ? Style.Bold : tag === 'i' || tag === 'em' ? Style.Italic : 0;
+        const bit = tag === 'b' || tag === 'strong' ? Style.Bold : tag === 'i' || tag === 'em' ? Style.Italic : tag === 'code' ? Style.Mono : 0;
         if (bit) {
           flush();
           style = closing ? (style & ~bit) | (base & bit) : style | bit;

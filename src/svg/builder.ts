@@ -1,5 +1,6 @@
 import { decodeEntities } from '../text/entities.js';
 import { Style } from '../text/measurer.js';
+import { FONT_MONO } from './theme.js';
 import type { Label } from '../text/label.js';
 import type { IconResolver } from '../types.js';
 
@@ -93,15 +94,16 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
 
 const BOLD = ' font-weight="var(--_w)"';
 const ITALIC = ' font-style="italic"';
+const MONO = ` font-family="${FONT_MONO}"`;
 
 export function spanStyle(style: number): string {
-  return (style & Style.Bold ? BOLD : '') + (style & Style.Italic ? ITALIC : '');
+  return (style & Style.Bold ? BOLD : '') + (style & Style.Italic ? ITALIC : '') + (style & Style.Mono ? MONO : '');
 }
 
 // The emphasis every span of a label has. It is written once, on the text element, where a
 // CSS rule for the label reaches it.
 export function sharedStyle(label: Label): number {
-  let shared = Style.Bold | Style.Italic;
+  let shared = Style.Bold | Style.Italic | Style.Mono;
   let any = false;
   for (const line of label.lines) {
     for (const span of line) {
@@ -118,6 +120,7 @@ export function textStyle(attrs: string, shared: number): string {
   return (
     attrs +
     (shared & Style.Bold && !attrs.includes(' font-weight="') ? BOLD : '') +
-    (shared & Style.Italic && !attrs.includes(' font-style="') ? ITALIC : '')
+    (shared & Style.Italic && !attrs.includes(' font-style="') ? ITALIC : '') +
+    (shared & Style.Mono && !attrs.includes(' font-family="') ? MONO : '')
   );
 }
