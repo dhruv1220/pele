@@ -105,9 +105,12 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
         if (bit) {
           flush();
           style = closing ? (style & ~bit) | (base & bit) : style | bit;
+          i += m[0].length;
+          continue;
         }
-        i += m[0].length;
-        continue;
+        // Not a recognized formatting tag: keep it as literal text (the SVG writer
+        // escapes it). Previously the whole tag-shaped span was silently swallowed,
+        // so e.g. "List<T>" rendered as "List".
       }
     } else if (markdown && (ch === '*' || ch === '_')) {
       const double = source[i + 1] === ch;

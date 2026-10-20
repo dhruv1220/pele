@@ -65,6 +65,25 @@ describe('flowchart rendering', () => {
     assertWellFormed(svg);
   });
 
+  it('keeps literal angle-bracket text in quoted labels', () => {
+    const { svg } = render('flowchart LR\n  A["List<T>"]', options);
+    expect(svg).toContain('List&lt;T&gt;');
+    assertWellFormed(svg);
+  });
+
+  it('keeps a label that is only tag-shaped text instead of rendering it blank', () => {
+    const { svg } = render('flowchart LR\n  A["<img src=x>"]', options);
+    expect(svg).toContain('&lt;img src=x&gt;');
+    assertWellFormed(svg);
+  });
+
+  it('still formats recognized tags while keeping unrecognized ones literal', () => {
+    const { svg } = render('flowchart LR\n  A["<b>bold</b> and <T>"]', options);
+    expect(svg).toMatch(/<tspan[^>]* font-weight="var\(--_w\)">bold<\/tspan>/);
+    expect(svg).toContain('&lt;T&gt;');
+    assertWellFormed(svg);
+  });
+
   it('decodes entity codes and line breaks in labels', () => {
     const { svg } = render('flowchart TD\n  A["a #quot;b#quot; #35; #9829;<br/>second line"]', options);
     expect(svg).toContain('a &quot;b&quot; # ♥');
