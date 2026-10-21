@@ -4,6 +4,8 @@ export const enum Style {
   Bold = 1,
   Italic = 2,
   Mono = 4,
+  Sub = 8,
+  Sup = 16,
 }
 
 export interface TextMeasurer {
@@ -46,6 +48,8 @@ function isZeroWidth(c: number): boolean {
 export const metricsMeasurer: TextMeasurer = {
   width(text, size, style) {
     const mono = (style & Style.Mono) !== 0;
+    // Sub/superscript is set smaller, so it also measures smaller.
+    const eff = style & (Style.Sub | Style.Sup) ? size * 0.8 : size;
     const table = style & Style.Bold ? (bold ??= unpack(BOLD)) : (regular ??= unpack(REGULAR));
     let units = 0;
     for (let i = 0; i < text.length; i++) {
@@ -56,7 +60,7 @@ export const metricsMeasurer: TextMeasurer = {
       else if (isWide(c)) units += mono ? 1200 : 1000;
       else units += mono ? 600 : 580;
     }
-    return (units * size) / 1000;
+    return (units * eff) / 1000;
   },
 };
 
@@ -110,10 +114,11 @@ export function canvasMeasurer(fontFamily: string, monoFamily = 'monospace'): Te
         faces = fonts?.size;
         caches.clear();
       }
+      const eff = style & (Style.Sub | Style.Sup) ? size * 0.8 : size;
       const font =
         (style & Style.Italic ? 'italic ' : '') +
         (style & Style.Bold ? 'bold ' : '') +
-        size +
+        eff +
         'px ' +
         (style & Style.Mono ? monoFamily : fontFamily);
       let cache = caches.get(font);

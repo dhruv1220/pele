@@ -366,4 +366,25 @@ describe('public api', () => {
     expect(model.nodes.get('B')?.type).toBe('diamond');
     expect(model.edges[0]).toMatchObject({ start: 'A', end: 'B', type: 'arrow_point' });
   });
+
+  it('renders <sub> and <sup> in labels with baseline shift and smaller text', () => {
+    const { svg } = render('flowchart LR\n  A["H<sub>2</sub>O"] --> B["x<sup>2</sup>"]', options);
+    expect(svg).toContain('baseline-shift="sub"');
+    expect(svg).toContain('baseline-shift="super"');
+    // the shifted runs are their own tspans, and the tags themselves are gone
+    expect(svg).toMatch(/<tspan[^>]*baseline-shift="sub"[^>]*>2<\/tspan>/);
+    expect(svg).toMatch(/<tspan[^>]*baseline-shift="super"[^>]*>2<\/tspan>/);
+    expect(svg).not.toContain('<sub>');
+    expect(svg).not.toContain('<sup>');
+    expect(() => assertWellFormed(svg)).not.toThrow();
+  });
+
+  it('nesting sub/sup inside other emphasis keeps each style on its own span', () => {
+    const { svg } = render('flowchart LR\n  A["<b>H<sub>2</sub>O</b>"]', options);
+    // bold covers the whole label, so it is written once on the text element
+    expect(svg).toMatch(/<text[^>]*font-weight="var\(--_w\)"/);
+    // the subscript run is its own tspan with the baseline shift
+    expect(svg).toMatch(/<tspan[^>]*baseline-shift="sub"[^>]*>2<\/tspan>/);
+    expect(() => assertWellFormed(svg)).not.toThrow();
+  });
 });

@@ -143,7 +143,16 @@ function inline(line: Span[], source: string, markdown: boolean, base: number, h
       if (m && m.index === i) {
         const tag = m[1].toLowerCase();
         const closing = source[i + 1] === '/';
-        const bit = tag === 'b' || tag === 'strong' ? Style.Bold : tag === 'i' || tag === 'em' ? Style.Italic : 0;
+        const bit =
+          tag === 'b' || tag === 'strong'
+            ? Style.Bold
+            : tag === 'i' || tag === 'em'
+              ? Style.Italic
+              : tag === 'sub'
+                ? Style.Sub
+                : tag === 'sup'
+                  ? Style.Sup
+                  : 0;
         if (bit) {
           flush();
           htmlStyle = closing ? (htmlStyle & ~bit) | (base & bit) : htmlStyle | bit;
