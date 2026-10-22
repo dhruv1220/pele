@@ -371,7 +371,6 @@ describe('public api', () => {
     const { svg } = render('flowchart LR\n  A["H<sub>2</sub>O"] --> B["x<sup>2</sup>"]', options);
     expect(svg).toContain('baseline-shift="sub"');
     expect(svg).toContain('baseline-shift="super"');
-    // the shifted runs are their own tspans, and the tags themselves are gone
     expect(svg).toMatch(/<tspan[^>]*baseline-shift="sub"[^>]*>2<\/tspan>/);
     expect(svg).toMatch(/<tspan[^>]*baseline-shift="super"[^>]*>2<\/tspan>/);
     expect(svg).not.toContain('<sub>');
@@ -381,10 +380,32 @@ describe('public api', () => {
 
   it('nesting sub/sup inside other emphasis keeps each style on its own span', () => {
     const { svg } = render('flowchart LR\n  A["<b>H<sub>2</sub>O</b>"]', options);
-    // bold covers the whole label, so it is written once on the text element
     expect(svg).toMatch(/<text[^>]*font-weight="var\(--_w\)"/);
-    // the subscript run is its own tspan with the baseline shift
     expect(svg).toMatch(/<tspan[^>]*baseline-shift="sub"[^>]*>2<\/tspan>/);
+    expect(() => assertWellFormed(svg)).not.toThrow();
+  });
+
+  it('shifts text inside both <sup> and <sub> by the inner tag', () => {
+    const { svg } = render('flowchart LR\n  A["x<sup>a<sub>b</sub>c</sup>"]', options);
+    expect(svg).toContain('<tspan baseline-shift="super" font-size="smaller">a</tspan>');
+    expect(svg).toContain('<tspan baseline-shift="sub" font-size="smaller">b</tspan>');
+    expect(svg).toContain('<tspan baseline-shift="super" font-size="smaller">c</tspan>');
+    expect(() => assertWellFormed(svg)).not.toThrow();
+  });
+
+  it('restores the outer <sup> when a nested <sup> closes', () => {
+    const { svg } = render('flowchart LR\n  A["<sup>a<sub>b<sup>c</sup>d</sub>e</sup>"]', options);
+    expect(svg).toContain('<tspan baseline-shift="sub" font-size="smaller">d</tspan><tspan baseline-shift="super" font-size="smaller">e</tspan>');
+  });
+
+  it('keeps the inner of <sup> and <sub> across a line break', () => {
+    const { svg } = render('flowchart LR\n  A["<sup>a<sub>b<br/>c</sub>d</sup>"]', options);
+    expect(svg).toMatch(/<tspan x="0" y="[\d.-]+" baseline-shift="sub" font-size="smaller">c<\/tspan><tspan baseline-shift="super" font-size="smaller">d<\/tspan>/);
+  });
+
+  it('shifts a label that is all subscript on its tspan', () => {
+    const { svg } = render('stateDiagram-v2\n  s1\n  note right of s1 : <sub>2</sub>', options);
+    expect(svg).toMatch(/<text[^>]* font-size="14"[^>]*><tspan[^>]* baseline-shift="sub" font-size="smaller">2<\/tspan><\/text>/);
     expect(() => assertWellFormed(svg)).not.toThrow();
   });
 });

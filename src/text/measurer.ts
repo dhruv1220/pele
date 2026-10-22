@@ -8,6 +8,9 @@ export const enum Style {
   Sup = 16,
 }
 
+// Approximate divisor for CSS font-size="smaller".
+const SMALLER = 1.2;
+
 export interface TextMeasurer {
   width(text: string, size: number, style: number): number;
 }
@@ -48,8 +51,7 @@ function isZeroWidth(c: number): boolean {
 export const metricsMeasurer: TextMeasurer = {
   width(text, size, style) {
     const mono = (style & Style.Mono) !== 0;
-    // Sub/superscript is set smaller, so it also measures smaller.
-    const eff = style & (Style.Sub | Style.Sup) ? size * 0.8 : size;
+    const eff = style & (Style.Sub | Style.Sup) ? size / SMALLER : size;
     const table = style & Style.Bold ? (bold ??= unpack(BOLD)) : (regular ??= unpack(REGULAR));
     let units = 0;
     for (let i = 0; i < text.length; i++) {
@@ -114,7 +116,7 @@ export function canvasMeasurer(fontFamily: string, monoFamily = 'monospace'): Te
         faces = fonts?.size;
         caches.clear();
       }
-      const eff = style & (Style.Sub | Style.Sup) ? size * 0.8 : size;
+      const eff = style & (Style.Sub | Style.Sup) ? size / SMALLER : size;
       const font =
         (style & Style.Italic ? 'italic ' : '') +
         (style & Style.Bold ? 'bold ' : '') +
