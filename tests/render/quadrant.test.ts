@@ -152,6 +152,16 @@ describe('quadrant chart rendering', () => {
     expect(new Set(labels.map(([x, y]) => `${Math.round(x / 20)},${Math.round(y / 10)}`)).size).toBe(4);
   });
 
+  it('lets a point label use the spot above its point when the quadrant label is empty', () => {
+    // An empty quadrant label leaves a zero-size box in the occupied list; it draws nothing,
+    // so it must not push the label to the side (issue #57).
+    const { svg } = render('quadrantChart\n  P: [0.25, 0.4375]\n  Q: [0.25, 0.4175]', options);
+    const dot = circles(svg).find((d) => d.get('data-id') === 'P')!;
+    const label = elements(/<text[^>]*>P<\/text>/.exec(svg)![0])[0].attrs;
+    expect(Number(label.get('x'))).toBe(Number(dot.get('cx')));
+    expect(Number(label.get('y'))).toBeLessThan(Number(dot.get('cy')));
+  });
+
   it('keeps a boundary point label below its quadrant title before using a crossing fallback', () => {
     const source = `quadrantChart
       title Q4 candidates by effort and impact
