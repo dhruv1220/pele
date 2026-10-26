@@ -75,9 +75,10 @@ interface End {
 const NO_LINES: Line[] = [];
 const NO_TEXT: string[] = [];
 
-function memberLine(member: ClassMember, measurer: TextMeasurer, size: number): Line {
+function memberLine(member: ClassMember, measurer: TextMeasurer, size: number, mono: boolean): Line {
   const text = decodeEntities(member.getDisplayDetails().displayText).trim();
-  return { text, width: measurer.width(text, size, member.classifier === '*' ? Style.Italic : 0), classifier: member.classifier };
+  const style = (member.classifier === '*' ? Style.Italic : 0) | (mono ? Style.Mono : 0);
+  return { text, width: measurer.width(text, size, style), classifier: member.classifier };
 }
 
 export function renderClass(db: ClassDb, config: Config, options: RenderOptions): Rendered {
@@ -91,6 +92,9 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   const conf = (config.class ?? {}) as Config;
   const graph = buildClassGraph(db, conf.hierarchicalNamespaces !== false);
   const hideEmpty = conf.hideEmptyMembersBox === true;
+  // Measure and draw members in the monospace font, so a --pele-font-mono style
+  // on .pele-member no longer overflows the box sized for the proportional font.
+  const monoMembers = conf.monoMembers === true;
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.8);
@@ -215,8 +219,8 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     const generic = cls.type ? '&lt;' + parseGenericTypes(cls.type).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '&gt;' : '';
     const label = layoutLabel(cls.label + generic, false, measurer, fontSize, 4000, Style.Bold | (style.italic ? Style.Italic : 0));
     const annotations = cls.annotations.length > 0 ? cls.annotations.map((a) => mathText(`«${a.trim()}»`, tiny) ?? `«${decodeEntities(a).trim()}»`) : NO_TEXT;
-    const attributes = cls.members.length > 0 ? cls.members.map((m) => memberLine(m, measurer, memberSize)) : NO_LINES;
-    const methods = cls.methods.length > 0 ? cls.methods.map((m) => memberLine(m, measurer, memberSize)) : NO_LINES;
+    const attributes = cls.members.length > 0 ? cls.members.map((m) => memberLine(m, measurer, memberSize, monoMembers)) : NO_LINES;
+    const methods = cls.methods.length > 0 ? cls.methods.map((m) => memberLine(m, measurer, memberSize, monoMembers)) : NO_LINES;
     let inner = label.width;
     let annotationsH = 0;
     for (const a of annotations) {
@@ -576,7 +580,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       return out;
     };
     if (view.attributes.length > 0 || view.methods.length > 0) {
-      body += `<g class="pele-members" font-size="${memberSize}">${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
+      body += `<g class="pele-members" font-size="${memberSize}"${monoMembers ? ' font-family="var(--_fm)"' : ''}>${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
     }
     if (cls.tooltip) body = `<title>${escText(cls.tooltip)}</title>` + body;
     if (cls.link) body = linked(body, cls.link, cls.id, links, options, cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '');
