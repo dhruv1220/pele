@@ -383,10 +383,24 @@ Upgraded to Pro,Stayed on Pro,284`;
   });
 
   it('rejects what Mermaid rejects', () => {
-    for (const src of ['sankey\n', 'sankey\na,b\n', 'sankey\na,b,1,2\n', 'sankey\na,,1\n', 'sankey\n"",b,1\n', 'sankey\na,b,1\n   \nc,d,2\n', 'sankey x\na,b,1\n']) {
+    for (const src of ['sankey\n', 'sankey\na,b\n', 'sankey\na,b,1,2\n', 'sankey\na,,1\n', 'sankey\n"",b,1\n', 'sankey x\na,b,1\n']) {
       expect(() => render(src, options), src).toThrow(PeleError);
     }
     expect(() => render('sankey\na,b\n', options)).toThrow(/Expecting 'COMMA', 'NEWLINE', 'EOF', got 'EOF'|Expecting 'COMMA'/);
+  });
+
+  it('ignores blanks at the edge of each row', () => {
+    // Mermaid's preparation regex only strips blanks at the ends of the whole text, so
+    // these are parse errors there too (mermaid-js/mermaid#8535); Pele strips them per row.
+    for (const [src, title] of [
+      ['sankey-beta \na,b,1', 'a → b: 1'],
+      ['sankey-beta\n\ta,b,1\nc,d,2', 'c → d: 2'],
+      ['sankey-beta\na,b,1\n   \nc,d,2', 'c → d: 2'],
+      ['sankey-beta\na,b,1\n "c d",e,2', 'c d → e: 2'],
+      ['sankey-beta\nd,e,"2" \ng,h,3', 'g → h: 3'],
+    ] as const) {
+      expect(render(src, options).svg, src).toContain(`<title>${title}</title>`);
+    }
   });
 
   it('reads values that start with a number, and refuses the rest', () => {

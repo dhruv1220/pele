@@ -22,6 +22,12 @@ const FRAGMENTS = [
 const reference = (text: string): string =>
   text.replaceAll(/^[^\S\n\r]+|[^\S\n\r]+$/g, '').replaceAll(/([\n\r])+/g, '\n').trim();
 
+// Pele strips blanks at both ends of every row, not just the ends of the whole text:
+// Mermaid's regex is commented "remove all trailing spaces for each row" but lacks the
+// `m` flag, so it only strips at the ends of the text (pele#58, mermaid-js/mermaid#8535).
+const referencePerRow = (text: string): string =>
+  text.replaceAll(/^[^\S\n\r]+|[^\S\n\r]+$/gm, '').replaceAll(/([\n\r])+/g, '\n').trim();
+
 const energy = readFileSync('tests/compat/sankey/upstream/energy.csv', 'utf8');
 const raw = [
   ...loadCorpus('sankey', /sankey/i),
@@ -52,7 +58,7 @@ function compare(src: string): void {
   const accepted = expected.ok && !invalidName && !invalidValue;
   expect(actual.ok, `acceptance of ${JSON.stringify(src)}`).toBe(accepted);
   if (accepted) expect(actual.calls, `model calls of ${JSON.stringify(src)}`).toEqual(expected.calls);
-  expect(prepareTextForParsing(src), `preparation of ${JSON.stringify(src)}`).toBe(reference(src));
+  expect(prepareTextForParsing(src), `preparation of ${JSON.stringify(src)}`).toBe(referencePerRow(src));
 }
 
 describe('sankey parser against the Mermaid grammar', () => {

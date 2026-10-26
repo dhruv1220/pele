@@ -22,22 +22,39 @@ function isBlank(c: number): boolean {
   );
 }
 
-// Mermaid's sankeyUtils: strip blanks at both ends of the text, then collapse runs of line
-// breaks so that no row is empty. Its first step is a regex that rescans every run of blanks;
-// this does the same in one pass.
+// Mermaid's sankeyUtils strips blanks with a regex commented "remove all trailing spaces
+// for each row", but the regex lacks the `m` flag, so it only strips at the ends of the whole
+// text — blanks at the edge of any other row are parse errors (mermaid-js/mermaid#8535,
+// pele#58). Strip blanks at both ends of every row instead: split after each line boundary
+// (\n, \r, \u2028, \u2029) and trim the blanks off each piece, keeping the boundary itself.
+// A side effect, also present in Mermaid with the flag: blanks at a line edge inside a
+// multi-line quoted name are trimmed.
 export function prepareTextForParsing(text: string, steps?: Edit[][]): string {
-  let start = 0;
-  let end = text.length;
-  while (start < end && isBlank(text.charCodeAt(start))) start++;
-  while (end > start && isBlank(text.charCodeAt(end - 1))) end--;
-  const sliced = text.slice(start, end);
-  const collapsed = sliced.replace(RE_LINE_BREAKS, '\n');
+  const edits: Edit[] = [];
+  const pieces: string[] = [];
+  let pos = 0;
+  for (const piece of text.split(/(?<=[\n\r\u2028\u2029])/)) {
+    const last = piece.charCodeAt(piece.length - 1);
+    const boundary =
+      piece.length > 0 && (last === 10 || last === 13 || last === 0x2028 || last === 0x2029) ? 1 : 0;
+    const end = piece.length - boundary;
+    let start = 0;
+    let stop = end;
+    while (start < stop && isBlank(piece.charCodeAt(start))) start++;
+    while (stop > start && isBlank(piece.charCodeAt(stop - 1))) stop--;
+    if (start > 0) edits.push([pos, pos + start, 0]);
+    if (stop < end) edits.push([pos + stop, pos + end, 0]);
+    pieces.push(piece.slice(start, stop) + piece.slice(end));
+    pos += piece.length;
+  }
+  const perLine = pieces.join('');
+  const collapsed = perLine.replace(RE_LINE_BREAKS, '\n');
   const trimmed = collapsed.trim();
   if (steps !== undefined) {
     const lead = collapsed.length - collapsed.trimStart().length;
     steps.push(
-      [[0, start, 0], [end, text.length, 0]],
-      replacements(sliced, RE_LINE_BREAKS, 1),
+      edits,
+      replacements(perLine, RE_LINE_BREAKS, 1),
       [[0, lead, 0], [lead + trimmed.length, collapsed.length, 0]]
     );
   }
