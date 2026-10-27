@@ -266,3 +266,55 @@ describe('XY chart rendering', () => {
     expect(render(CHART, options).svg).toBe(render(CHART, options).svg);
   });
 });
+
+describe('plotColorPalette', () => {
+  const PALETTE = `---
+config:
+  themeVariables:
+    xyChart:
+      plotColorPalette: '#000000, #0000FF, #00FF00, #FF0000'
+---
+xychart
+  title "Different Colors in xyChart"
+  x-axis "categoriesX" ["Category 1", "Category 2", "Category 3", "Category 4"]
+  y-axis "valuesY" 0 --> 50
+  line "Black" [10, 20, 30, 40]
+  bar "Blue" [20, 30, 25, 35]
+  bar "Green" [15, 25, 20, 30]
+  line "Red" [5, 15, 25, 35]`;
+
+  it('colors each series from the palette, in order', () => {
+    const { svg } = render(PALETTE, options);
+    for (const [title, color] of [
+      ['Black', '#000000'],
+      ['Blue', '#0000FF'],
+      ['Green', '#00FF00'],
+      ['Red', '#FF0000'],
+    ] as const) {
+      expect(svg).toContain(`data-id="${title}"`);
+      expect(svg).toContain(`fill="${color}"`);
+    }
+    expect(svg).not.toContain('var(--pele-series-');
+  });
+
+  it('cycles a short palette and keeps the default without one', () => {
+    const short = PALETTE.replace('#000000, #0000FF, #00FF00, #FF0000', 'red, blue');
+    const { svg } = render(short, options);
+    expect(svg).toContain('fill="red"');
+    expect(svg).toContain('fill="blue"');
+    expect(svg).not.toContain('var(--pele-series-');
+    expect(render(CHART, options).svg).toContain('var(--pele-series-1,');
+  });
+
+  it('ignores entries that are not colors', () => {
+    const hostile = PALETTE.replace(
+      '#000000, #0000FF, #00FF00, #FF0000',
+      '#000000, "><script>alert(1)</script>, #00FF00',
+    );
+    const { svg } = render(hostile, options);
+    expect(svg).not.toContain('<script>');
+    expect(svg).toContain('fill="#000000"');
+    // The rejected entry does not shift the series: the second series takes the next valid color.
+    expect(svg).toContain('data-id="Blue" fill="#00FF00"');
+  });
+});

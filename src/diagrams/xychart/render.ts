@@ -38,6 +38,20 @@ function finite(value: number | undefined): number | undefined {
   return typeof value === 'number' && isFinite(value) ? Math.min(Math.max(value, -LIMIT), LIMIT) : undefined;
 }
 
+// A CSS color a palette may carry: a hex, a functional rgb/hsl form, or a bare name.
+// Anything else is dropped, so a hostile palette cannot break out of the attribute it lands in.
+const RE_COLOR = /^(?:#[0-9a-fA-F]{3,8}|(?:rgb|rgba|hsl|hsla)\([\d\s.,%]+\)|[a-zA-Z]+)$/;
+
+// Mermaid's themeVariables.xyChart.plotColorPalette, a comma-separated list of colors
+// a series cycles through. Invalid entries are ignored; an empty list keeps the default.
+function plotPalette(value: unknown): string[] {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => RE_COLOR.test(entry));
+}
+
 function widest(marks: Mark[]): number {
   let width = 0;
   for (const mark of marks) width = Math.max(width, mark.label.width);
@@ -59,6 +73,10 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
     throw new PeleError('No Plot to render, please provide a plot with some data', 'semantic', { type: 'xychart' });
   }
   const chart = record(config.xyChart);
+  const palette = plotPalette(record(record(config.themeVariables).xyChart).plotColorPalette);
+  // A series keeps the color of its place in the palette, or the default when none is set.
+  const colorFor = (index: number): string =>
+    palette.length > 0 ? palette[index % palette.length] : seriesColor(index);
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.75);
@@ -266,7 +284,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   let pointLabels = '';
   let bar = 0;
   plots.forEach((plot, index) => {
-    const color = seriesColor(index);
+    const color = colorFor(index);
     const id = plot.title ? ` data-id="${escText(plot.title)}"` : '';
     // A series declared before the categories can hold more values than there are categories.
     const n = x.type === 'band' ? Math.min(plot.data.length, count) : plot.data.length;
@@ -383,7 +401,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
     const row = Math.max(ROW, label.height + 6);
     if (ly + row > height) break;
     const y = ly + row / 2;
-    const color = seriesColor(index);
+    const color = colorFor(index);
     legendOut +=
       `<g class="pele-legend-item" data-id="${escText(plots[index].title)}">` +
       (plots[index].type === 'bar'
