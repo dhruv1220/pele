@@ -40,6 +40,14 @@
     font-weight: 300;
     font-size: var(--font-size-heading);
   }
+  // Version of the Pele build deployed here, read from package.json at
+  // build time so it tracks releases without a manual bump.
+  .playground-version {
+    font-size: var(--font-size-small);
+    color: var(--faint);
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
   .playground-actions {
     position: relative;
     display: flex;
